@@ -128,7 +128,7 @@ function getData(request) {
   //var metrics = ['page_fans','page_fans_paid','page_impressions','page_impressions_paid','page_fans_country','page_fans_gender_age','page_fan_adds'];
 
   //Get data from API
-  var response = getDataFromAPI(metrics[0],startDate,endDate,pageToken);
+  var response = getListOfMetrics(metrics,startDate,endDate,pageToken);
 
   // Parse tthe result
   var parsedResponse = JSON.parse(response).data[0].values;

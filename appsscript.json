@@ -8,9 +8,9 @@
     }]
   },
   "dataStudio": {
-    "name": "Facebook Connector INTK",
+    "name": "Facebook Connector",
     "logoUrl": "https://www.intk.com/logo.png",
-    "company": "None",
+    "company": "INTK",
     "addonUrl": "None",
     "supportUrl": "None",
     "description": "UNDER DEVELOPMENT - This connector can be used to get your Facebook Insights",
