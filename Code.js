@@ -1,36 +1,26 @@
 var cc = DataStudioApp.createCommunityConnector();
 
-var CLIENT_ID = 'APP-ID';
-var CLIENT_SECRET = 'APP-SECRET'; 
-
-var accessToken = "PAGE-TOKEN";
-
+var startTimer = 0;
 
 function getConfig() {
   var config = cc.getConfig();
 
   config.newInfo()
-      .setId('instructions')
+   .setId('instructions')
   .setText('Please enter the configuration data for your Facebook connector');
 
   config.newTextInput()
       .setId('page_id')
       .setName('Enter your Facebook Page Id')
-      .setHelpText('Find the page Id on the \'About\' section of your page')  
+      .setHelpText('Find the page Id on the \'About\' section of your page')
       .setPlaceholder('Enter Facebook Page Id here')
       .setAllowOverride(false);
-  
+
   config.setDateRangeRequired(true);
 
   return config.build();
 }
 
-
-function getConfig() {
-  return {
-    dateRangeRequired: true
-  };
-}
 
 function getFields(request) {
   var cc = DataStudioApp.createCommunityConnector();
@@ -44,6 +34,10 @@ function getFields(request) {
   fields.newDimension()
     .setId('day')
     .setType(types.YEAR_MONTH_DAY);
+
+  fields.newMetric()
+    .setId('execution_time')
+    .setType(types.NUMBER)
 
   return fields;
 }
@@ -68,17 +62,25 @@ function getSchema() {
           semanticGroup: 'DATETIME',
           semanticType: 'YEAR_MONTH_DAY'
         }
+      },
+      {
+        name: 'execution_time',
+        label: 'Time for fetching data',
+        dataType: 'NUMBER',
+        semantics: {
+          conceptType: 'METRIC'
+        }
       }
     ]
   };
 }
 
-function getDataFromAPI(requestedMetric,startDate,endDate)
+function getDataFromAPI(requestedMetric,startDate,endDate,pageToken)
 {
   var startDateMs = new Date(startDate).getTime() / 1000;
   var endDateMs = new Date(endDate).getTime() / 1000;
   var baseUrl = "https://graph.facebook.com/v6.0/580780118698601/insights?metric=";
-  var custom_url = baseUrl + requestedMetric + "&period=day&since="+startDateMs +"&until="+endDateMs +"&access_token="+accessToken;
+  var custom_url = baseUrl + requestedMetric + "&period=day&since="+startDateMs +"&until="+endDateMs +"&access_token="+pageToken;
 
   return UrlFetchApp.fetch(custom_url);
 }
@@ -86,9 +88,18 @@ function getDataFromAPI(requestedMetric,startDate,endDate)
 
 function getData(request) {
 
+  //Calculation of the time of the getData function
+  startTimer = Date.now();
+
+  //Extract info from request
+  var pageId = request.configParams['page_id'];
   var startDate = request.dateRange.startDate;
   var endDate = request.dateRange.endDate;
 
+  var requestEndpoint = "https://graph.facebook.com/v6.0/"+pageId+"/"
+
+
+  //create de schema for the data
   var dataSchema = [];
   var fixedSchema = getSchema().schema;
   request.fields.forEach(function(field) {
@@ -100,38 +111,26 @@ function getData(request) {
     }
   });
 
+
+  //Get the page token
+  var tokenUrl = requestEndpoint+"?fields=access_token";
+  var tokenResponse = UrlFetchApp.fetch(tokenUrl,
+      {
+        headers: { 'Authorization': 'Bearer ' + getOAuthService().getAccessToken() },
+        muteHttpExceptions : true
+      });
+  var pageToken = JSON.parse(tokenResponse).access_token;
+
+
+
+
   var metrics = ['page_fans'];
   //var metrics = ['page_fans','page_fans_paid','page_impressions','page_impressions_paid','page_fans_country','page_fans_gender_age','page_fan_adds'];
 
-  var response = getDataFromAPI(metrics[0],startDate,endDate);
+  //Get data from API
+  var response = getDataFromAPI(metrics[0],startDate,endDate,pageToken);
 
-  /*
-  for each(var elem in metrics)
-  {
-    var response = getDataFromAPI(elem,startDate,endDate);
-    totalResponse.push(response);
-  }
-
-
-  listOfParsedResponse = [];
-
-  for each(var elem in totalResponse)
-  {
-    var parsedResponse = JSON.parse(elem).data[0].values;
-    listOfParsedResponse.push(parsedResponse);
-  }
-
-
-
-  for (var i = 0; i < listOfParsedResponse[0].length; i++) {
-      //parsedResponse1[i].concat({"impression":parsedResponse2[i].value});
-      for each(var metricID = 0; i < metrics.length; i++)
-      {
-        listOfParsedResponse[0][i][metrics[metricID]]=listOfParsedResponse[metricID].value;
-      }
-    }
-  */
-
+  // Parse tthe result
   var parsedResponse = JSON.parse(response).data[0].values;
 
   var data = [];
@@ -149,8 +148,12 @@ function getData(request) {
         values.push(fans.value);
         break;
       case 'day':
-        // Google expects YYYYMMDD format
         values.push(fansDate);
+        break;
+      case 'execution_time':
+        //send time difference
+        values.push(Date.now()-startTimer);
+
         break;
       }
     });
@@ -171,14 +174,16 @@ function getData(request) {
 function isAdminUser(){
  var email = Session.getEffectiveUser().getEmail();
   if( email == 'steven@itsnotthatkind.org' || email == 'analyticsintk@gmail.com' || email == 'quentin@itsnotthatkind.org'){
-    return true; 
+    return true;
   } else {
     return false;
   }
 }
 
-/**** BEGIN: OAuth Methods ****/
 
+
+/**** BEGIN: OAuth Methods ****/
+//ref : https://stickler.de/informationen/data-analytics/kostenloser-facebook-ads-google-datastudio-connector
 function getAuthType() {
   var response = { type: 'OAUTH2' };
   return response;
@@ -195,7 +200,7 @@ function isAuthValid() {
 function getOAuthService() {
   return OAuth2.createService('exampleService')
     .setAuthorizationBaseUrl('https://www.facebook.com/dialog/oauth')
-    .setTokenUrl('https://graph.facebook.com/v5.0/oauth/access_token')      
+    .setTokenUrl('https://graph.facebook.com/v5.0/oauth/access_token')
     .setClientId(CLIENT_ID)
     .setClientSecret(CLIENT_SECRET)
     .setPropertyStore(PropertiesService.getUserProperties())
