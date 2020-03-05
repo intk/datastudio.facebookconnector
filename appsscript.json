@@ -1,0 +1,11 @@
+{
+  "runtimeVersion": "V8",
+  "dataStudio": {
+    "name": "Facebook Connector INTK",
+    "logoUrl": "https://www.intk.com/logo.png",
+    "company": "None",
+    "addonUrl": "None",
+    "supportUrl": "None",
+    "description": "This connector can be used to get your Facebook Insights"
+  }
+}
