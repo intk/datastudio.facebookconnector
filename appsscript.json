@@ -1,11 +1,19 @@
 {
   "runtimeVersion": "V8",
+  "dependencies": {
+    "libraries": [{
+      "userSymbol": "OAuth2",
+      "libraryId": "1B7FSrk5Zi6L1rSxxTDgDEUsPzlukDsi4KGuTMorsTQHhGBzBkMun4iDF",
+      "version": "31"
+    }]
+  },
   "dataStudio": {
     "name": "Facebook Connector INTK",
     "logoUrl": "https://www.intk.com/logo.png",
     "company": "None",
     "addonUrl": "None",
     "supportUrl": "None",
-    "description": "This connector can be used to get your Facebook Insights"
+    "description": "UNDER DEVELOPMENT - This connector can be used to get your Facebook Insights",
+    "sources": ["npm"]
   }
 }

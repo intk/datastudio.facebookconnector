@@ -1,11 +1,29 @@
-var accessToken = "PAGE_TOKEN"
+var cc = DataStudioApp.createCommunityConnector();
+
+var CLIENT_ID = 'APP-ID';
+var CLIENT_SECRET = 'APP-SECRET'; 
+
+var accessToken = "PAGE-TOKEN";
 
 
-function getAuthType() {
-  var response = { type: 'NONE' };
-  return response;
+function getConfig() {
+  var config = cc.getConfig();
+
+  config.newInfo()
+      .setId('instructions')
+  .setText('Please enter the configuration data for your Facebook connector');
+
+  config.newTextInput()
+      .setId('page_id')
+      .setName('Enter your Facebook Page Id')
+      .setHelpText('Find the page Id on the \'About\' section of your page')  
+      .setPlaceholder('Enter Facebook Page Id here')
+      .setAllowOverride(false);
+  
+  config.setDateRangeRequired(true);
+
+  return config.build();
 }
-
 
 
 function getConfig() {
@@ -150,6 +168,52 @@ function getData(request) {
 
 
 // Use for debug only, allow us to see the error code in data studio when somethhing is wrong.
-function isAdminUser() {
-  return true;
+function isAdminUser(){
+ var email = Session.getEffectiveUser().getEmail();
+  if( email == 'steven@itsnotthatkind.org' || email == 'analyticsintk@gmail.com' || email == 'quentin@itsnotthatkind.org'){
+    return true; 
+  } else {
+    return false;
+  }
 }
+
+/**** BEGIN: OAuth Methods ****/
+
+function getAuthType() {
+  var response = { type: 'OAUTH2' };
+  return response;
+}
+
+function resetAuth() {
+  getOAuthService().reset();
+}
+
+function isAuthValid() {
+  return getOAuthService().hasAccess();
+}
+
+function getOAuthService() {
+  return OAuth2.createService('exampleService')
+    .setAuthorizationBaseUrl('https://www.facebook.com/dialog/oauth')
+    .setTokenUrl('https://graph.facebook.com/v5.0/oauth/access_token')      
+    .setClientId(CLIENT_ID)
+    .setClientSecret(CLIENT_SECRET)
+    .setPropertyStore(PropertiesService.getUserProperties())
+    .setCallbackFunction('authCallback')
+    .setScope('pages_show_list, manage_pages, read_insights');
+};
+
+function authCallback(request) {
+  var authorized = getOAuthService().handleCallback(request);
+  if (authorized) {
+    return HtmlService.createHtmlOutput('Success! You can close this tab.');
+  } else {
+    return HtmlService.createHtmlOutput('Denied. You can close this tab');
+  };
+};
+
+function get3PAuthorizationUrls() {
+  return getOAuthService().getAuthorizationUrl();
+}
+
+/**** END: OAuth Methods ****/
