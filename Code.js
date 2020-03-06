@@ -35,10 +35,6 @@ function getFields(request) {
     .setId('day')
     .setType(types.YEAR_MONTH_DAY);
 
-  fields.newMetric()
-    .setId('execution_time')
-    .setType(types.NUMBER)
-
   return fields;
 }
 
@@ -62,27 +58,71 @@ function getSchema() {
           semanticGroup: 'DATETIME',
           semanticType: 'YEAR_MONTH_DAY'
         }
-      },
-      {
-        name: 'execution_time',
-        label: 'Time for fetching data',
-        dataType: 'NUMBER',
-        semantics: {
-          conceptType: 'METRIC'
-        }
       }
     ]
   };
 }
 
-function getDataFromAPI(requestedMetric,startDate,endDate,pageToken)
+function getDataFromAPI(requestedMetric,startDate,endDate,pageToken,requestEndpoint)
 {
   var startDateMs = new Date(startDate).getTime() / 1000;
   var endDateMs = new Date(endDate).getTime() / 1000;
-  var baseUrl = "https://graph.facebook.com/v6.0/580780118698601/insights?metric=";
-  var custom_url = baseUrl + requestedMetric + "&period=day&since="+startDateMs +"&until="+endDateMs +"&access_token="+pageToken;
+  
+  var baseUrl = requestEndpoint+"insights?metric=";
 
-  return UrlFetchApp.fetch(custom_url);
+  // If date range < 90 days
+  const maxTimeDifference = 90*24*60*60;
+  const oneDay = 24*60*60;
+  
+  if(endDateMs-startDateMs > maxTimeDifference)
+  {
+    console.log('More than 90 days')
+    var startIntervalDate = startDateMs;
+    var endIntervalDate = startIntervalDate + maxTimeDifference;
+    
+    var apiresponse = [];
+    while(endIntervalDate<endDateMs)
+    {
+    
+      var custom_url = baseUrl + requestedMetric + "&period=day&since="+startIntervalDate +"&until="+endIntervalDate +"&access_token="+pageToken;
+      console.log(custom_url);
+
+      
+      // if list empty push the complete response
+      if(apiresponse.length == 0) {
+        console.log('if');
+        apiresponse = JSON.parse(UrlFetchApp.fetch(custom_url));
+      }
+      else 
+      {
+        console.log('else');
+        apiresponse.data[0].values = apiresponse.data[0].values.concat(JSON.parse(UrlFetchApp.fetch(custom_url)).data[0].values);
+      }
+      startIntervalDate = startIntervalDate + maxTimeDifference - oneDay;
+      endIntervalDate = endIntervalDate + maxTimeDifference - oneDay;
+      console.log(apiresponse.data[0].values);
+
+    }
+    console.log(apiresponse);
+    console.log(apiresponse.data[0].values);
+
+    
+    return apiresponse;
+  }
+  else
+  {
+    console.log('Less than 90 days');
+    var custom_url = baseUrl + requestedMetric + "&period=day&since="+startDateMs +"&until="+endDateMs +"&access_token="+pageToken;
+    
+    var resp = UrlFetchApp.fetch(custom_url);
+    var apiresponse =  JSON.parse(resp);
+    console.log(custom_url);
+    console.log(resp);
+    console.log(apiresponse);
+    return apiresponse;
+  }
+
+  
 }
 
 
@@ -128,10 +168,12 @@ function getData(request) {
   //var metrics = ['page_fans','page_fans_paid','page_impressions','page_impressions_paid','page_fans_country','page_fans_gender_age','page_fan_adds'];
 
   //Get data from API
-  var response = getListOfMetrics(metrics,startDate,endDate,pageToken);
+  var response = getDataFromAPI(metrics[0],startDate,endDate,pageToken,requestEndpoint);
 
   // Parse tthe result
-  var parsedResponse = JSON.parse(response).data[0].values;
+  //var parsedResponse = JSON.parse(response).data[0].values;
+  var parsedResponse = response.data[0].values;
+
 
   var data = [];
   parsedResponse.forEach(function(fans) {
@@ -149,11 +191,6 @@ function getData(request) {
         break;
       case 'day':
         values.push(fansDate);
-        break;
-      case 'execution_time':
-        //send time difference
-        values.push(Date.now()-startTimer);
-
         break;
       }
     });
