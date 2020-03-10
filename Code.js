@@ -28,13 +28,13 @@ function getFields(request) {
   var types = cc.FieldType;
 
   fields.newMetric()
-    .setId('page_fans')
+    .setId('page_fan_adds')
     .setType(types.NUMBER)
 
   fields.newDimension()
     .setId('day')
     .setType(types.YEAR_MONTH_DAY);
-
+    
   return fields;
 }
 
@@ -42,8 +42,8 @@ function getSchema() {
   return {
     schema: [
       {
-        name: 'page_fans',
-        label: 'Like number',
+        name: 'page_fan_adds',
+        label: 'New Page likes',
         dataType: 'NUMBER',
         semantics: {
           conceptType: 'METRIC'
@@ -63,73 +63,18 @@ function getSchema() {
   };
 }
 
-function getDataFromAPI(requestedMetric,startDate,endDate,pageToken,requestEndpoint)
-{
-  const maxTimeDifference = 90*24*60*60;
-  const oneDay = 24*60*60;
-  
-  var startDateMs = (new Date(startDate).getTime() / 1000) - oneDay;
-  var endDateMs = (new Date(endDate).getTime() / 1000) + oneDay;
-  
-  var baseUrl = requestEndpoint+"insights?metric=";
-  
-  if(endDateMs-startDateMs > maxTimeDifference)
-  {
-    console.log('More than 90 days')
-    var startIntervalDate = startDateMs;
-    var endIntervalDate = startIntervalDate + maxTimeDifference;
-    
-    var apiresponse = [];
-    while(endIntervalDate<endDateMs)
-    {
-    
-      var custom_url = baseUrl + requestedMetric + "&period=day&since="+startIntervalDate +"&until="+endIntervalDate +"&access_token="+pageToken;
-      console.log(custom_url);
 
-      
-      // if list empty push the complete response
-      if(apiresponse.length == 0) {
-        apiresponse = JSON.parse(UrlFetchApp.fetch(custom_url));
-      }
-      else // just append to the values list
-      {
-        apiresponse.data[0].values = apiresponse.data[0].values.concat(JSON.parse(UrlFetchApp.fetch(custom_url)).data[0].values);
-      }
-      startIntervalDate = startIntervalDate + maxTimeDifference - oneDay;
-      endIntervalDate = endIntervalDate + maxTimeDifference - oneDay;
-      //console.log(apiresponse.data[0].values);
-
-    }
-    
-    //rest of the day
-    var custom_url = baseUrl + requestedMetric + "&period=day&since="+startIntervalDate +"&until="+endDateMs +"&access_token="+pageToken;
-    //console.log(custom_url);
-    apiresponse.data[0].values = apiresponse.data[0].values.concat(JSON.parse(UrlFetchApp.fetch(custom_url)).data[0].values);
-    //console.log(apiresponse);
-    //console.log(apiresponse.data[0].values);
-
-    
-    return apiresponse;
-  }
-  else
-  {
-    console.log('Less than 90 days');
-    var custom_url = baseUrl + requestedMetric + "&period=day&since="+startDateMs +"&until="+endDateMs +"&access_token="+pageToken;
-    
-    var resp = UrlFetchApp.fetch(custom_url);
-    var apiresponse =  JSON.parse(resp);
-    //console.log(apiresponse.data[0].values);
-    return apiresponse;
-  }
-
-  
-}
 
 
 function getData(request) {
 
   //Calculation of the time of the getData function
-  startTimer = Date.now();
+  startTime = Date.now();
+  
+  //var t0 = Performance.now();
+  //console.log(t0);
+  
+  console.log(request);
 
   //Extract info from request
   var pageId = request.configParams['page_id'];
@@ -164,29 +109,41 @@ function getData(request) {
 
 
 
-  var metrics = ['page_fans'];
+  var metrics = ['page_fan_adds'];
   //var metrics = ['page_fans','page_fans_paid','page_impressions','page_impressions_paid','page_fans_country','page_fans_gender_age','page_fan_adds'];
 
   //Get data from API
-  var response = getDataFromAPI(metrics[0],startDate,endDate,pageToken,requestEndpoint);
+  var response = getDataFromAPI(metrics,startDate,endDate,pageToken,requestEndpoint);
 
-  // Parse tthe result
+  // Parse the result
   //var parsedResponse = JSON.parse(response).data[0].values;
   var parsedResponse = response.data[0].values;
-
+  
+  var endTime = Date.now();
+  
+  console.log(endTime-startTime);
+  var timeRequest = endTime-startTime;
 
   var data = [];
   parsedResponse.forEach(function(fans) {
     var values = [];
 
     var fansTime = new Date(fans.end_time);
+    
+    /*
+    console.log(fansTime);
+    fansTime.setDate(fansTime.getDate()-2);
+    console.log(fansTime);
+    
+    */
+    
     // Google expects YYMMDD format
     var fansDate = fansTime.toISOString().slice(0, 10).replace(/-/g, "");
 
     // Provide values in the order defined by the schema.
     dataSchema.forEach(function(field) {
       switch (field.name) {
-      case 'page_fans':
+      case 'page_fan_adds':
         values.push(fans.value);
         break;
       case 'day':
