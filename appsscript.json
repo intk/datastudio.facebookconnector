@@ -1,5 +1,5 @@
 {
-  "runtimeVersion": "V8",
+  "timeZone": "Europe/Paris",
   "dependencies": {
     "libraries": [{
       "userSymbol": "OAuth2",
@@ -7,8 +7,9 @@
       "version": "31"
     }]
   },
+  "runtimeVersion": "V8",
   "dataStudio": {
-    "name": "Facebook Connector - Stage",
+    "name": "Facebook Connector Cache - Stage",
     "logoUrl": "https://www.intk.com/logo.png",
     "company": "INTK",
     "addonUrl": "None",
